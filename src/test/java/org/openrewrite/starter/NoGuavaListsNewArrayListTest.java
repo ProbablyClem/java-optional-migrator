@@ -1,5 +1,7 @@
 package org.openrewrite.starter;
 
+import static org.openrewrite.java.Assertions.java;
+
 import org.junit.jupiter.api.Test;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
@@ -32,75 +34,39 @@ class NoGuavaListsNewArrayListTest implements RewriteTest {
               .build()),
           java(
             """
-                  import com.google.common.collect.*;
-                  
-                  import java.util.List;
+                  import java.util.Optional;
                   
                   class Test {
-                      List<Integer> cardinalsWorldSeries = Lists.newArrayList();
+                      Optional<String> getOptionalString(){
+                        return Optional.ofNullable(null);
+                      }
+                      
+                      int getId(){
+                        return 0;
+                      }
+                      
+                      Test(){
+                      String val = getOptionalString();
+                      int id = getId();
+                      }
                   }
               """,
             """
-                  import java.util.ArrayList;
-                  import java.util.List;
-                  \n
-                  class Test {
-                      List<Integer> cardinalsWorldSeries = new ArrayList<>();
-                  }
-              """
-          )
-        );
-    }
-
-    @Test
-    void replaceWithNewArrayListIterable() {
-        rewriteRun(
-          java(
-            """
-                  import com.google.common.collect.*;
-                  
-                  import java.util.Collections;
-                  import java.util.List;
+                  import java.util.Optional;
                   
                   class Test {
-                      List<Integer> l = Collections.emptyList();
-                      List<Integer> cardinalsWorldSeries = Lists.newArrayList(l);
-                  }
-              """,
-            """
-                  import java.util.ArrayList;
-                  import java.util.Collections;
-                  import java.util.List;
-                  \n
-                  class Test {
-                      List<Integer> l = Collections.emptyList();
-                      List<Integer> cardinalsWorldSeries = new ArrayList<>(l);
-                  }
-              """
-          )
-        );
-    }
-
-    @Test
-    void replaceWithNewArrayListWithCapacity() {
-        rewriteRun(
-          java(
-            """
-                  import com.google.common.collect.*;
-                          
-                  import java.util.ArrayList;
-                  import java.util.List;
-                          
-                  class Test {
-                      List<Integer> cardinalsWorldSeries = Lists.newArrayListWithCapacity(2);
-                  }
-              """,
-            """
-                  import java.util.ArrayList;
-                  import java.util.List;
-                          
-                  class Test {
-                      List<Integer> cardinalsWorldSeries = new ArrayList<>(2);
+                      Optional<String> getOptionalString(){
+                        return Optional.ofNullable(null);
+                      }
+                      
+                      int getId(){
+                        return 0;
+                      }
+                      
+                      Test(){
+                      String val = getOptionalString().orElse(null);
+                      int id = getId();
+                      }
                   }
               """
           )

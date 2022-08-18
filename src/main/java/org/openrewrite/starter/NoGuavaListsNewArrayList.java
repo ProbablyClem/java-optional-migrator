@@ -24,11 +24,10 @@ import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.search.UsesMethod;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.J.MethodInvocation;
 
 public class NoGuavaListsNewArrayList extends Recipe {
-    private static final MethodMatcher NEW_ARRAY_LIST = new MethodMatcher("com.google.common.collect.Lists newArrayList()");
-    private static final MethodMatcher NEW_ARRAY_LIST_ITERABLE = new MethodMatcher("com.google.common.collect.Lists newArrayList(java.lang.Iterable)");
-    private static final MethodMatcher NEW_ARRAY_LIST_CAPACITY = new MethodMatcher("com.google.common.collect.Lists newArrayListWithCapacity(int)");
+    private static final MethodMatcher OPTIONAL_RETURN = new MethodMatcher("*..* *(..)");
 
     @Override
     public String getDisplayName() {
@@ -45,9 +44,7 @@ public class NoGuavaListsNewArrayList extends Recipe {
         return new JavaIsoVisitor<ExecutionContext>() {
             @Override
             public J.CompilationUnit visitCompilationUnit(J.CompilationUnit cu, ExecutionContext executionContext) {
-                doAfterVisit(new UsesMethod<>(NEW_ARRAY_LIST));
-                doAfterVisit(new UsesMethod<>(NEW_ARRAY_LIST_ITERABLE));
-                doAfterVisit(new UsesMethod<>(NEW_ARRAY_LIST_CAPACITY));
+                doAfterVisit(new UsesMethod<>(OPTIONAL_RETURN));
                 return cu;
             }
         };
@@ -56,36 +53,16 @@ public class NoGuavaListsNewArrayList extends Recipe {
     @Override
     protected TreeVisitor<?, ExecutionContext> getVisitor() {
         return new JavaVisitor<ExecutionContext>() {
-            private final JavaTemplate newArrayList = JavaTemplate.builder(this::getCursor, "new ArrayList<>()")
-                    .imports("java.util.ArrayList")
+            private final JavaTemplate newOrElse = JavaTemplate.builder(this::getCursor, "#{any()}.orElse(null)")
+                    .imports("java.util.Optional")
                     .build();
-
-            private final JavaTemplate newArrayListIterable = JavaTemplate.builder(this::getCursor, "new ArrayList<>(#{any(java.lang.Iterable)})")
-                    .imports("java.util.ArrayList")
-                    .build();
-
-            private final JavaTemplate newArrayListCapacity = JavaTemplate.builder(this::getCursor, "new ArrayList<>(#{any(int)})")
-                    .imports("java.util.ArrayList")
-                    .build();
-
             @Override
             public J visitMethodInvocation(J.MethodInvocation method, ExecutionContext executionContext) {
-                if (NEW_ARRAY_LIST.matches(method)) {
-                    maybeRemoveImport("com.google.common.collect.Lists");
-                    maybeAddImport("java.util.ArrayList");
-                    return method.withTemplate(newArrayList, method.getCoordinates().replace());
-                } else if (NEW_ARRAY_LIST_ITERABLE.matches(method)) {
-                    maybeRemoveImport("com.google.common.collect.Lists");
-                    maybeAddImport("java.util.ArrayList");
-                    return method.withTemplate(newArrayListIterable, method.getCoordinates().replace(),
-                            method.getArguments().get(0));
-                } else if (NEW_ARRAY_LIST_CAPACITY.matches(method)) {
-                    maybeRemoveImport("com.google.common.collect.Lists");
-                    maybeAddImport("java.util.ArrayList");
-                    return method.withTemplate(newArrayListCapacity, method.getCoordinates().replace(),
-                            method.getArguments().get(0));
+                if (method.getSimpleName().contains("get") && method.getType().toString().contains("Optional")) {
+                    maybeAddImport("java.util.Optional");
+                    return method.withTemplate(newOrElse, method.getCoordinates().replace(), method);
                 }
-                return super.visitMethodInvocation(method, executionContext);
+                return method;// super.visitMethodInvocation(method, executionContext);
             }
         };
     }
